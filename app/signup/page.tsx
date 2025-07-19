@@ -1,45 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-export default function Home() {
+export default function Signup() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const result = await signIn("credentials", {
-      redirect: false,
-      username,
-      password,
-    });
-    if (result?.error) {
-      setError("Invalid username or password");
-    } else {
-      const sessionRes = await fetch("/api/auth/session");
-      if (sessionRes.ok) {
-        const session = await sessionRes.json();
-        if (session?.user?.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/dashboard");
-        }
-      } else {
-        setError("Failed to verify session");
+    setSuccess(null);
+
+    if (!username || !password) {
+      setError("Username and password are required");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || "Failed to sign up");
       }
+
+      setSuccess("Sign-up successful! Redirecting to login...");
+      setTimeout(() => router.push("/"), 2000);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to sign up");
+      }
+      console.error(err);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white p-6 shadow-md rounded-lg">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
+        <h1 className="text-2xl font-bold mb-4 text-center">Sign Up</h1>
         {error && <p className="text-red-500 mb-4">{error}</p>}
+        {success && <p className="text-green-500 mb-4">{success}</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
@@ -77,13 +87,13 @@ export default function Home() {
             type="submit"
             className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
           >
-            Login
+            Sign Up
           </button>
         </form>
         <p className="mt-4 text-center">
-          Don't have an account?{" "}
-          <a href="/signup" className="text-blue-500 hover:underline">
-            Sign up
+          Already have an account?{" "}
+          <a href="/" className="text-blue-500 hover:underline">
+            Log in
           </a>
         </p>
       </div>
